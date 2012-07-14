@@ -1,5 +1,6 @@
 package cli;
 
+import java.util.Iterator;
 import java.util.List;
 import java.io.BufferedReader;
 import java.io.File;
@@ -125,15 +126,16 @@ public class WhisperPrep
 					asin = null;
 			}
 
-			for (EXTHRecord rec : exthList)
+			for (Iterator<EXTHRecord> it = exthList.iterator(); it.hasNext(); )
 			{
+				EXTHRecord rec = it.next();
 				int recType = rec.getRecordType();
 				if (recType == 113)
 				{
-					if (asin != null) exthList.remove(rec);
+					if (asin != null) it.remove();
 				}
 				else if (recType == 501)
-					exthList.remove(rec);
+					it.remove();
 			}
 			
 			if (asin != null) exthList.add(new EXTHRecord(113, asin, encoding));
