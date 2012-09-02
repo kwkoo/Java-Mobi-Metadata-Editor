@@ -15,6 +15,8 @@ ChangeLog
 
 v0.15
 - added the ability to add/edit the TTS EXTH record
+- fixed issues with ConcurrentModificationExceptions thrown
+- added more language codes
 
 v0.14
 - does not pack the header if the full name field and EXTH records remain unchanged
