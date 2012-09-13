@@ -47,6 +47,7 @@ public class LanguageDialog extends JDialog implements ActionListener
 	private boolean dictOutputExists;
 
 	private LanguageModel model;
+	private LanguageCodes langCodes;
 
 	/**
 	 * Create the dialog.
@@ -58,48 +59,17 @@ public class LanguageDialog extends JDialog implements ActionListener
 		locale = model.getLocale();
 		dictInput = model.getDictInput();
 		dictOutput = model.getDictOutput();
-		localeExists = (LanguageCodes.codeToIndex(locale) != -1);
-		dictInputExists = (LanguageCodes.codeToIndex(dictInput) != -1);
-		dictOutputExists = (LanguageCodes.codeToIndex(dictOutput) != -1);
-
-		String[] localeChoices;
-		String[] dictInputChoices;
-		String[] dictOutputChoices;
+		langCodes = new LanguageCodes();
+		localeExists = langCodes.codeExists(locale);
+		dictInputExists = langCodes.codeExists(dictInput);
+		dictOutputExists = langCodes.codeExists(dictOutput);
 
 		// assemble choices for combo boxes
 		//
-		if (localeExists)
-			localeChoices = LanguageCodes.description;
-		else
-		{
-			localeChoices = new String[LanguageCodes.description.length + 1];
-			System.arraycopy(LanguageCodes.description, 0, localeChoices, 0,
-					LanguageCodes.description.length);
-			localeChoices[localeChoices.length - 1] = "Unknown (" + locale
-					+ ")";
-		}
+		String[] localeChoices = buildChoices(locale);
+		String[] dictInputChoices = buildChoices(dictInput);
+		String[] dictOutputChoices = buildChoices(dictOutput);
 
-		if (dictInputExists)
-			dictInputChoices = LanguageCodes.description;
-		else
-		{
-			dictInputChoices = new String[LanguageCodes.description.length + 1];
-			System.arraycopy(LanguageCodes.description, 0, dictInputChoices, 0,
-					LanguageCodes.description.length);
-			dictInputChoices[dictInputChoices.length - 1] = "Unknown ("
-					+ dictInput + ")";
-		}
-
-		if (dictOutputExists)
-			dictOutputChoices = LanguageCodes.description;
-		else
-		{
-			dictOutputChoices = new String[LanguageCodes.description.length + 1];
-			System.arraycopy(LanguageCodes.description, 0, dictOutputChoices,
-					0, LanguageCodes.description.length);
-			dictOutputChoices[dictOutputChoices.length - 1] = "Unknown ("
-					+ dictOutput + ")";
-		}
 
 		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		setBounds(100, 100, 450, 300);
@@ -149,8 +119,11 @@ public class LanguageDialog extends JDialog implements ActionListener
 			}
 			{
 				cbLanguage = new JComboBox(localeChoices);
-				cbLanguage.setSelectedIndex(localeExists ? LanguageCodes
-						.codeToIndex(locale) : (localeChoices.length - 1));
+				if (localeExists)
+					cbLanguage.setSelectedItem(langCodes.codeToDescription(locale));
+				else
+					cbLanguage.setSelectedIndex(localeChoices.length - 1);
+
 				GridBagConstraints gbc_cbLanguage = new GridBagConstraints();
 				gbc_cbLanguage.insets = new Insets(0, 0, 5, 0);
 				gbc_cbLanguage.fill = GridBagConstraints.HORIZONTAL;
@@ -172,10 +145,11 @@ public class LanguageDialog extends JDialog implements ActionListener
 			}
 			{
 				cbDictInput = new JComboBox(dictInputChoices);
-				cbDictInput
-						.setSelectedIndex(dictInputExists ? LanguageCodes
-								.codeToIndex(dictInput)
-								: (dictInputChoices.length - 1));
+				if (dictInputExists)
+					cbDictInput.setSelectedItem(langCodes.codeToDescription(dictInput));
+				else
+					cbDictInput.setSelectedIndex(dictInputChoices.length - 1);
+
 				GridBagConstraints gbc_cbDictInput = new GridBagConstraints();
 				gbc_cbDictInput.insets = new Insets(0, 0, 5, 0);
 				gbc_cbDictInput.fill = GridBagConstraints.HORIZONTAL;
@@ -198,9 +172,11 @@ public class LanguageDialog extends JDialog implements ActionListener
 			}
 			{
 				cbDictOutput = new JComboBox(dictOutputChoices);
-				cbDictOutput.setSelectedIndex(dictOutputExists ? LanguageCodes
-						.codeToIndex(dictOutput)
-						: (dictOutputChoices.length - 1));
+				if (dictOutputExists)
+					cbDictOutput.setSelectedItem(langCodes.codeToDescription(dictOutput));
+				else
+					cbDictOutput.setSelectedIndex(dictOutputChoices.length - 1);
+
 				GridBagConstraints gbc_cbDictOutput = new GridBagConstraints();
 				gbc_cbDictOutput.fill = GridBagConstraints.HORIZONTAL;
 				gbc_cbDictOutput.gridx = 1;
@@ -232,17 +208,16 @@ public class LanguageDialog extends JDialog implements ActionListener
 
 		if (source == okButton)
 		{
-			int localeIndex = cbLanguage.getSelectedIndex();
-			if ((localeIndex >= 0) && (localeIndex < LanguageCodes.code.length))
-				locale = LanguageCodes.code[localeIndex];
+			int mappedCode;
+			
+			mappedCode = langCodes.descriptionToCode((String)cbLanguage.getSelectedItem());
+			if (mappedCode != -1) locale = mappedCode;
 
-			int dictInputIndex = cbDictInput.getSelectedIndex();
-			if ((dictInputIndex >= 0) && (dictInputIndex < LanguageCodes.code.length))
-				dictInput = LanguageCodes.code[dictInputIndex];
+			mappedCode = langCodes.descriptionToCode((String)cbDictInput.getSelectedItem());
+			if (mappedCode != -1) dictInput = mappedCode;
 
-			int dictOutputIndex = cbDictOutput.getSelectedIndex();
-			if ((dictOutputIndex >= 0) && (dictOutputIndex < LanguageCodes.code.length))
-				dictOutput = LanguageCodes.code[dictOutputIndex];
+			mappedCode = langCodes.descriptionToCode((String)cbDictOutput.getSelectedItem());
+			if (mappedCode != -1) dictOutput = mappedCode;
 
 			model.setLanguages(locale, dictInput, dictOutput);
 
@@ -253,6 +228,22 @@ public class LanguageDialog extends JDialog implements ActionListener
 		{
 			setVisible(false);
 			dispose();
+		}
+	}
+	
+	private String[] buildChoices(int code)
+	{
+		if (langCodes.codeExists(code))
+			return langCodes.getDescriptions();
+		else
+		{
+			String[] descriptions = langCodes.getDescriptions();
+			String[] choices = new String[descriptions.length + 1];
+			System.arraycopy(descriptions, 0, choices, 0,
+					descriptions.length);
+			choices[choices.length - 1] = "Unknown (" + code
+					+ ")";
+			return choices;
 		}
 	}
 }

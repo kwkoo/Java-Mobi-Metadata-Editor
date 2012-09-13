@@ -1,9 +1,9 @@
 You will need to have Java (JDK or JRE) 1.5 or above to execute this program.
 
-To start the program, just double-click on the MobiMetaEditorV0.15.jar file.
+To start the program, just double-click on the MobiMetaEditorV0.16.jar file.
 
 If that doesn't work, type this from the command-line:
-	java -jar MobiMetaEditorV0.15.jar
+	java -jar MobiMetaEditorV0.16.jar
 
 This was written based on the MOBI file format describe in:
 http://wiki.mobileread.com/wiki/MOBI
@@ -12,6 +12,9 @@ This application is licensed under the MIT License (http://www.opensource.org/li
 
 
 ChangeLog
+
+v0.16
+- rewrote the language codes routines
 
 v0.15
 - added the ability to add/edit the TTS EXTH record
@@ -27,7 +30,7 @@ v0.13
 - added a Header Info dialog, which details various fields in the PDB header, PalmDOC header, and MOBI header
 - added in provisions to invoke debug and safe modes from the command line
 - added in WhisperPrep, which lets users set ASINs and sets the CDEType to EBOK
-  (to invoke, type "java -cp MobiMetaEditorV0.13.jar cli.WhisperPrep
+  (to invoke, type "java -cp MobiMetaEditorV0.16.jar cli.WhisperPrep
   <input directory> <output directory>")
 
 v0.12
