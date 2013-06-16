@@ -2,6 +2,7 @@ package gui;
 
 import java.io.*;
 import java.util.HashSet;
+import java.util.prefs.Preferences;
 import java.awt.EventQueue;
 
 import javax.swing.JFrame;
@@ -10,7 +11,6 @@ import javax.swing.JOptionPane;
 import java.awt.GridBagLayout;
 import javax.swing.JLabel;
 
-import java.awt.FileDialog;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.Rectangle;
@@ -27,6 +27,7 @@ import java.awt.Color;
 import javax.swing.JScrollPane;
 import java.awt.FlowLayout;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JTable;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -34,6 +35,7 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
+import javax.swing.filechooser.FileFilter;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
@@ -49,23 +51,24 @@ import javax.swing.JMenuItem;
 public class Main implements ListSelectionListener, ActionListener,
 		TableModelListener, LanguageModel
 {
-	private FileDialog	openFileChooser	= null;
-	private FileDialog	saveFileChooser	= null;
-	private JFrame		frame;
-	private JTextArea	lblInputFilename;
-	private JTextArea	lblOutputFilename;
-	private JTextField	tfFullName;
-	private JTable		table;
-	private JButton		buttonRemove;
-	private JButton		buttonAdd;
-	private JButton		buttonSave;
-	private	JButton		btnLanguage;
-	private	JButton		btnHeaderInfo;
-	private GuiModel	model;
-	private File		outputFile;
-	private	boolean		packHeader	= false;
-	private JMenuItem mntmOpen;
-	private JMenuItem mntmSave;
+	private JFileChooser openFileChooser   = null;
+	private JFileChooser saveFileChooser   = null;
+	private Preferences  prefs             = null;
+	private JFrame       frame;
+	private JTextArea    lblInputFilename;
+	private JTextArea    lblOutputFilename;
+	private JTextField   tfFullName;
+	private JTable       table;
+	private JButton      buttonRemove;
+	private JButton      buttonAdd;
+	private JButton      buttonSave;
+	private	JButton      btnLanguage;
+	private	JButton      btnHeaderInfo;
+	private GuiModel     model;
+	private File         outputFile;
+	private	boolean      packHeader        = false;
+	private JMenuItem    mntmOpen;
+	private JMenuItem    mntmSave;
 
 	/**
 	 * Launch the application.
@@ -75,7 +78,7 @@ public class Main implements ListSelectionListener, ActionListener,
 		System.setProperty("apple.laf.useScreenMenuBar", "true");
 		System.setProperty("com.apple.mrj.application.apple.menu.about.name",
 				"Mobi Meta Editor");
-		
+
 		HashSet<String> optionsSet = new HashSet<String>();
 		File inputFile = null;
 		for (int i=0; i<args.length; i++)
@@ -95,7 +98,7 @@ public class Main implements ListSelectionListener, ActionListener,
 					+ " does not exist or is not a file.");
 			System.exit(1);
 		}
-		
+
 		if (optionsSet.contains("-h") || optionsSet.contains("--help"))
 			printUsage();
 
@@ -160,26 +163,50 @@ public class Main implements ListSelectionListener, ActionListener,
 		if (!MobiCommon.safeMode)
 			buttonRemove.setEnabled(table.getSelectedRow() != -1);
 	}
-	
+
 	public void pickSaveTarget()
 	{
 		if (saveFileChooser == null)
 		{
-			saveFileChooser = new FileDialog(frame, "Select mobi file", FileDialog.SAVE);
-			saveFileChooser.setFilenameFilter(new MobiFileFilter());
-		}
-		
-		if (outputFile != null)
-		{
-			saveFileChooser.setDirectory(outputFile.getParent());
-			saveFileChooser.setFile(outputFile.getName());
+			saveFileChooser = new JFileChooser();
+			saveFileChooser.setDialogTitle("Select mobi file");
+			saveFileChooser.setAcceptAllFileFilterUsed(false);
+			saveFileChooser.addChoosableFileFilter(new GenericFileFilter(".azw"));
+			saveFileChooser.addChoosableFileFilter(new GenericFileFilter(".mobi"));
 		}
 
-		saveFileChooser.setVisible(true);
-		
-		if (saveFileChooser.getFile() != null)
+		// Use the same file filter as the open dialog
+		GenericFileFilter tmpFilter = (GenericFileFilter) openFileChooser.getFileFilter();
+
+		for (FileFilter f : saveFileChooser.getChoosableFileFilters())
 		{
-			outputFile = new File(saveFileChooser.getDirectory(), saveFileChooser.getFile());
+		    GenericFileFilter f2 = (GenericFileFilter) f;
+		    if (f2.getExtension().equals(tmpFilter.getExtension()))
+		    {
+		        saveFileChooser.setFileFilter(f2);
+		        break;
+		    }
+		}
+
+		if (outputFile != null)
+		{
+		    saveFileChooser.setCurrentDirectory(outputFile.getParentFile());
+		    saveFileChooser.setSelectedFile(outputFile);
+		}
+
+		int ret = saveFileChooser.showSaveDialog(frame);
+
+		if (saveFileChooser.getSelectedFile() != null && ret == JFileChooser.APPROVE_OPTION)
+		{
+		    outputFile = saveFileChooser.getSelectedFile();
+
+		    // Get selected file filter
+		    GenericFileFilter filter = (GenericFileFilter) saveFileChooser.getFileFilter();
+
+		    // Add extension to file name based on the selected filter
+		    if (!filter.accept(outputFile))
+		        outputFile = new File(outputFile.getAbsolutePath()+filter.getExtension());
+
 			lblOutputFilename.setText(outputFile.getAbsolutePath());
 		}
 	}
@@ -209,7 +236,7 @@ public class Main implements ListSelectionListener, ActionListener,
 					tmpOutput = File.createTempFile("mobimeta", ".mobi");
 				else
 					tmpOutput = outputFile;
-				
+
 				model.save(tmpOutput, packHeader);
 				if (!tmpOutput.equals(outputFile))
 				{
@@ -219,7 +246,7 @@ public class Main implements ListSelectionListener, ActionListener,
 						return;
 					}
 				}
-				
+
 				setWindowChangedStatus(false);
 				showAlert("File saved.");
 			}
@@ -402,7 +429,7 @@ public class Main implements ListSelectionListener, ActionListener,
 		gbc_tfFullName.gridx = 2;
 		gbc_tfFullName.gridy = 3;
 		panel.add(tfFullName, gbc_tfFullName);
-		
+
 		JPanel panel_3 = new JPanel();
 		GridBagConstraints gbc_panel_3 = new GridBagConstraints();
 		gbc_panel_3.insets = new Insets(0, 0, 5, 5);
@@ -410,7 +437,7 @@ public class Main implements ListSelectionListener, ActionListener,
 		gbc_panel_3.gridx = 2;
 		gbc_panel_3.gridy = 4;
 		panel.add(panel_3, gbc_panel_3);
-		
+
 		btnLanguage = new JButton("Language...");
 		btnLanguage.addActionListener(this);
 		btnHeaderInfo = new JButton("Header Info...");
@@ -440,7 +467,7 @@ public class Main implements ListSelectionListener, ActionListener,
 		table.getColumnModel().getColumn(0).setPreferredWidth(100);
 		table.getSelectionModel().addListSelectionListener(this);
 		scrollPane.setViewportView(table);
-		
+
 		JPanel panel_1 = new JPanel();
 		GridBagConstraints gbc_panel_1 = new GridBagConstraints();
 		gbc_panel_1.insets = new Insets(0, 0, 5, 5);
@@ -458,7 +485,7 @@ public class Main implements ListSelectionListener, ActionListener,
 		buttonRemove.addActionListener(this);
 		buttonRemove.setEnabled(false);
 		panel_1.add(buttonRemove);
-		
+
 		if (MobiCommon.safeMode)
 		{
 			buttonAdd.setEnabled(false);
@@ -497,17 +524,17 @@ public class Main implements ListSelectionListener, ActionListener,
 		buttonSave = new JButton("Save");
 		buttonSave.addActionListener(this);
 		panel_2.add(buttonSave);
-		
+
 		JMenuBar menuBar = new JMenuBar();
 		frame.setJMenuBar(menuBar);
-		
+
 		JMenu mnFile = new JMenu("File");
 		menuBar.add(mnFile);
-		
+
 		mntmOpen = new JMenuItem("Open...");
 		mntmOpen.addActionListener(this);
 		mnFile.add(mntmOpen);
-		
+
 		mntmSave = new JMenuItem("Save");
 		mntmSave.addActionListener(this);
 		mnFile.add(mntmSave);
@@ -517,23 +544,33 @@ public class Main implements ListSelectionListener, ActionListener,
 	{
 		if (openFileChooser == null)
 		{
-			openFileChooser = new FileDialog(frame, "Select mobi file", FileDialog.LOAD);
-			openFileChooser.setFilenameFilter(new MobiFileFilter());
+			openFileChooser = new JFileChooser();
+			openFileChooser.setDialogTitle("Select mobi file");
+			openFileChooser.setAcceptAllFileFilterUsed(false);
+			openFileChooser.addChoosableFileFilter(new GenericFileFilter(".azw"));
+			openFileChooser.addChoosableFileFilter(new GenericFileFilter(".mobi"));
+			openFileChooser.setFileFilter(openFileChooser.getChoosableFileFilters()[1]);
 		}
 
-		openFileChooser.setVisible(true);
-		
-		File source = null;
-		String dir	= openFileChooser.getDirectory();
-		String file	= openFileChooser.getFile();
-		if ((dir != null) && (file != null))
-			source = new File(dir, file);
+		// Remember last opened directory between sessions
+		if (prefs == null)
+		{
+		    String key = frame.getTitle()+"."+this.getClass().getName();
+		    prefs = Preferences.userRoot().node(key);
+		    String lastDir = prefs.get("lastDirectory", "");
+		    openFileChooser.setCurrentDirectory(new File(lastDir));
+		}
 
-		if (source != null)
+		int ret = openFileChooser.showOpenDialog(frame);
+
+		File source = openFileChooser.getSelectedFile();
+
+		if (source != null && ret == JFileChooser.APPROVE_OPTION)
 		{
 			try
 			{
-				model.setModel(source);
+				prefs.put("lastDirectory", source.getParentFile().getAbsolutePath());
+			    model.setModel(source);
 			}
 			catch (GuiException e)
 			{
@@ -552,7 +589,7 @@ public class Main implements ListSelectionListener, ActionListener,
 			setWindowChangedStatus(false);
 			packHeader = false;
 		}
-		
+
 		return source;
 	}
 
@@ -619,11 +656,15 @@ public class Main implements ListSelectionListener, ActionListener,
 			setWindowChangedStatus(true);
 		}
 	}
-	
+
 	protected void setWindowChangedStatus(boolean status)
 	{
 		frame.getRootPane().putClientProperty("Window.documentModified",
 				Boolean.valueOf(status));
+
+		// Make sure the table component is updated
+		table.repaint();
+		table.revalidate();
 	}
 
 	// we implement the LanguageModel interface because we want to intercept the
