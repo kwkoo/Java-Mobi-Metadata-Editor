@@ -624,6 +624,10 @@ public class Main implements ListSelectionListener, ActionListener,
 	{
 		frame.getRootPane().putClientProperty("Window.documentModified",
 				Boolean.valueOf(status));
+
+		// Make sure the table component is updated
+		table.repaint();
+		table.revalidate();
 	}
 
 	// we implement the LanguageModel interface because we want to intercept the
